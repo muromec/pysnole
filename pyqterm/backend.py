@@ -1500,6 +1500,10 @@ class Session(object):
         return Session._mux.proc_bury(self._session_id)
 
 
+    def is_alive(self):
+        return Session._mux.session.get(self._session_id, {}).get('state') == 'alive'
+
+        
     def keepalive(self):
         return Session._mux.proc_keepalive(self._session_id, self._width, self._height)
 

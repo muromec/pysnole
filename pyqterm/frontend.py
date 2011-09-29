@@ -2,7 +2,7 @@
 import sys
 import time
 
-from PyQt4.QtCore import QRect, Qt
+from PyQt4.QtCore import QRect, Qt, pyqtSignal
 from PyQt4.QtGui import (
        QApplication, QWidget, QPainter, QFont, QBrush, QColor, 
        QPen, QPixmap, QImage, QContextMenuEvent)
@@ -76,13 +76,14 @@ class TerminalWidget(QWidget):
        Qt.Key_F12:  "~l", 
     }
 
-    
 
-    def __init__(self, parent=None):
+    session_closed = pyqtSignal()
+
+
+    def __init__(self, parent=None, command="/bin/bash"):
         super(TerminalWidget, self).__init__(parent)
         self.parent().setTabOrder(self, self)
         self.setFocusPolicy(Qt.WheelFocus)
-        self._timer_id = None
         self.setAutoFillBackground(False)
         self.setAttribute(Qt.WA_OpaquePaintEvent, True)
         self.setCursor(Qt.IBeamCursor)
@@ -98,16 +99,28 @@ class TerminalWidget(QWidget):
         self._blink = False
         self._press_pos = None
         self._selection = None
-        self._sel_widget = None
-        self._session = Session()
-        self._session.start("/bin/bash")
         QApplication.instance().lastWindowClosed.connect(Session.close_all)
+        if command:
+            self.execute()
+
+        
+    def execute(self, command="/bin/bash"):
+        self._session = Session()
+        self._session.start(command)
         self._timer_id = None
+        # start timer either with high or low priority
         if self.hasFocus():
             self.focusInEvent(None)
         else:
             self.focusOutEvent(None)
-        #self._session.write("ls -lR")
+            
+            
+    def send(self, s):
+        self._session.write(s)
+
+        
+    def stop(self):
+        self._session.stop()
 
 
     def setFont(self, font):
@@ -116,10 +129,14 @@ class TerminalWidget(QWidget):
 
         
     def focusNextPrevChild(self, next):
+        if not self._session.is_alive():
+            return True
         return False
 
 
     def focusInEvent(self, event):
+        if not self._session.is_alive():
+            return
         if self._timer_id is not None:
             self.killTimer(self._timer_id)
         self._timer_id = self.startTimer(250)
@@ -128,6 +145,8 @@ class TerminalWidget(QWidget):
 
 
     def focusOutEvent(self, event):
+        if not self._session.is_alive():
+            return
         # reduced update interval 
         # -> slower screen updates
         # -> but less load on main app which results in better responsiveness
@@ -137,15 +156,27 @@ class TerminalWidget(QWidget):
 
 
     def resizeEvent(self, event):
+        if not self._session.is_alive():
+            return
         w, h = self._pixel2pos(self.width(), self.height())
         self._session.resize(w, h)
 
 
     def closeEvent(self, event):
+        if not self._session.is_alive():
+            return
         self._session.close()
 
 
     def timerEvent(self, event):
+        if not self._session.is_alive():
+            if self._timer_id is not None:
+                self.killTimer(self._timer_id)
+                self._timer_id = None
+            if DEBUG:
+                print "Session closed"
+            self.session_closed.emit()
+            return
         last_change = self._session.last_change()
         if not last_change:
             return
@@ -296,11 +327,11 @@ class TerminalWidget(QWidget):
                 self.zoom_out()
         else:
             if text:
-                self._session.write(text.encode("utf-8"))
+                self.send(text.encode("utf-8"))
             else:
                 s = self.keymap.get(key)
                 if s:
-                    self._session.write(s.encode("utf-8"))
+                    self.send(s.encode("utf-8"))
                 elif DEBUG:
                     print "Unkonwn key combination"
                     print "Modifiers:", modifiers
