@@ -18,6 +18,7 @@ class TabbedTerminal(QTabWidget):
 		self._new_button.clicked.connect(self.new_terminal)
 		self.setCornerWidget(self._new_button)
 		self.setTabsClosable(True)
+		self.setMovable(True)
 		self.setWindowTitle("Terminal")
 		self.resize(800, 600)
 		self._terms = []

@@ -10,68 +10,73 @@ from PyQt4.QtGui import (
 from .backend import Session
 
 
-foreground_color_map = {
-    0: "#000000",
-    1: "#c00006",
-    2: "#1bc806",
-    3: "#c3c609",
-    4: "#0000c2",
-    5: "#bf00c2",
-    6 : "#19c4c2",
-    7 : "#f2f2f2",
-    12: "transparent", #  Concealed
-    14: "#000000",     # Negative fg
-    15: "#ffffff",     # Default fg
-}
-background_color_map = {
-    0: "#000000",
-    1: "#cc2300",
-    2: "#00cc00",
-    3: "#cccc00",
-    4: "#0e2acc",
-    5: "#cc34cc",
-    6: "#00cccc",
-    7: "#f5f5f5",
-    12: "#555555",     # Cursor
-    14: "transparent", # Default bg
-    15: "#ffffff",     # Negative bg
-}
 
-
-
-keymap = {
-   Qt.Key_Backspace: chr(127),
-   Qt.Key_Escape: chr(27),
-   Qt.Key_AsciiTilde: "~~",
-   Qt.Key_Up: "~A",
-   Qt.Key_Down: "~B",
-   Qt.Key_Left: "~D", 
-   Qt.Key_Right: "~C", 
-   Qt.Key_PageUp: "~1", 
-   Qt.Key_PageDown: "~2", 
-   Qt.Key_Home: "~H", 
-   Qt.Key_End: "~F", 
-   Qt.Key_Insert: "~3",
-   Qt.Key_Delete: "~4", 
-   Qt.Key_F1: "~a",
-   Qt.Key_F2: "~b", 
-   Qt.Key_F3:  "~c", 
-   Qt.Key_F4:  "~d", 
-   Qt.Key_F5:  "~e", 
-   Qt.Key_F6:  "~f", 
-   Qt.Key_F7:  "~g", 
-   Qt.Key_F8:  "~h", 
-   Qt.Key_F9:  "~i", 
-   Qt.Key_F10:  "~j", 
-   Qt.Key_F11:  "~k", 
-   Qt.Key_F12:  "~l", 
-}
-
+DEBUG = False
 
 
 
 class TerminalWidget(QWidget):
 
+    foreground_color_map = {
+      0: "#000",
+      1: "#b00",
+      2: "#0b0",
+      3: "#bb0",
+      4: "#00b",
+      5: "#b0b",
+      6: "#0bb",
+      7: "#bbb",
+      8: "#666",
+      9: "#f00",
+      10: "#0f0",
+      11: "#ff0",
+      12: "#00f", # concelaed
+      13: "#f0f", 
+      14: "#000", # negative
+      15: "#fff", # default
+    }
+    background_color_map = {
+      0: "#000",
+      1: "#b00",
+      2: "#0b0",
+      3: "#bb0",
+      4: "#00b",
+      5: "#b0b",
+      6: "#0bb",
+      7: "#bbb",
+      12: "#aaa", # cursor
+      14: "#000", # default
+      15: "#fff", # negative
+    }
+    keymap = {
+       Qt.Key_Backspace: chr(127),
+       Qt.Key_Escape: chr(27),
+       Qt.Key_AsciiTilde: "~~",
+       Qt.Key_Up: "~A",
+       Qt.Key_Down: "~B",
+       Qt.Key_Left: "~D", 
+       Qt.Key_Right: "~C", 
+       Qt.Key_PageUp: "~1", 
+       Qt.Key_PageDown: "~2", 
+       Qt.Key_Home: "~H", 
+       Qt.Key_End: "~F", 
+       Qt.Key_Insert: "~3",
+       Qt.Key_Delete: "~4", 
+       Qt.Key_F1: "~a",
+       Qt.Key_F2: "~b", 
+       Qt.Key_F3:  "~c", 
+       Qt.Key_F4:  "~d", 
+       Qt.Key_F5:  "~e", 
+       Qt.Key_F6:  "~f", 
+       Qt.Key_F7:  "~g", 
+       Qt.Key_F8:  "~h", 
+       Qt.Key_F9:  "~i", 
+       Qt.Key_F10:  "~j", 
+       Qt.Key_F11:  "~k", 
+       Qt.Key_F12:  "~l", 
+    }
+
+    
 
     def __init__(self, parent=None):
         super(TerminalWidget, self).__init__(parent)
@@ -82,6 +87,7 @@ class TerminalWidget(QWidget):
         self.setAttribute(Qt.WA_OpaquePaintEvent, True)
         self.setCursor(Qt.IBeamCursor)
         font = QFont("Monospace")
+        font.setPixelSize(14)
         self.setFont(font)
         self._last_update = None
         self._screen = []
@@ -209,30 +215,34 @@ class TerminalWidget(QWidget):
 
 
     def _paint_screen(self, painter):
-        background_color = "#000"
-        brush = QBrush(QColor(background_color))
-        painter.fillRect(self.rect(), brush)
-        foreground_color = "#fff"
-        pen = QPen(QColor(foreground_color))
-        painter.setPen(pen)
-        y = 0
+        # Speed hacks: local name lookups are faster
+        vars().update(QColor=QColor, QBrush=QBrush, QPen=QPen, QRect=QRect)
+        background_color_map = self.background_color_map
+        foreground_color_map = self.foreground_color_map
         char_width = self._char_width
         char_height = self._char_height
         painter_drawText = painter.drawText
         painter_fillRect = painter.fillRect
         painter_setPen = painter.setPen
         align = Qt.AlignTop | Qt.AlignLeft
+        # set defaults
+        background_color = background_color_map[14]
+        foreground_color = foreground_color_map[15]
+        brush = QBrush(QColor(background_color))
+        painter_fillRect(self.rect(), brush)
+        pen = QPen(QColor(foreground_color))
+        painter_setPen(pen)
+        y = 0
         for row, line in enumerate(self._screen):
             col = 0
             for item in line:
                 if isinstance(item, basestring):
                     x = col * char_width
                     length = len(item)
-                    new_col = col + length
                     rect = QRect(x, y, x + char_width * length, y + char_height)
                     painter_fillRect(rect, brush)
                     painter_drawText(rect, align, item)
-                    col = new_col
+                    col += length
                 else:
                     foreground_color_idx, background_color_idx, underline_flag = item
                     foreground_color = foreground_color_map[foreground_color_idx]
@@ -276,7 +286,6 @@ class TerminalWidget(QWidget):
         
 
     def keyPressEvent(self, event):
-        print "keypress", event.key(), repr(unicode(event.text()))
         text = unicode(event.text())
         key = event.key()
         modifiers = event.modifiers()
@@ -289,9 +298,20 @@ class TerminalWidget(QWidget):
             if text:
                 self._session.write(text.encode("utf-8"))
             else:
-                s = keymap.get(key)
+                s = self.keymap.get(key)
                 if s:
                     self._session.write(s.encode("utf-8"))
+                elif DEBUG:
+                    print "Unkonwn key combination"
+                    print "Modifiers:", modifiers
+                    print "Key:", key
+                    for name in dir(Qt):
+                        if not name.startswith("Key_"):
+                            continue
+                        value = getattr(Qt, name)
+                        if value == key:
+                            print "Symbol: Qt.%s" % name
+                    print "Text: %r" % text
         event.accept()
     
 
