@@ -165,6 +165,14 @@ class TerminalWidget(QWidget):
         cx, cy = self._pos2pixel(self._cursor_col, self._cursor_row)
         self._cursor_rect = QRect(cx, cy, self._char_width, self._char_height)
 
+        
+    def _reset(self):
+        self._update_metrics()
+        self._update_cursor_rect()
+        self.resizeEvent(None)
+        self._dirty = True
+        self.update()
+        
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -252,17 +260,38 @@ class TerminalWidget(QWidget):
         painter.setBrush(brush)
         painter.drawRect(rect)
 
+        
+    def zoom_in(self):
+        font = self.font()
+        font.setPixelSize(font.pixelSize() + 2)
+        self.setFont(font)
+        self._reset()
+
+        
+    def zoom_out(self):
+        font = self.font()
+        font.setPixelSize(font.pixelSize() - 2)
+        self.setFont(font)
+        self._reset()
+        
 
     def keyPressEvent(self, event):
         print "keypress", event.key(), repr(unicode(event.text()))
         text = unicode(event.text())
-        if text:
-            self._session.write(text.encode("utf-8"))
+        key = event.key()
+        modifiers = event.modifiers()
+        ctrl = modifiers == Qt.ControlModifier
+        if ctrl and key == Qt.Key_Plus:
+            self.zoom_in()
+        elif ctrl and key == Qt.Key_Minus:
+                self.zoom_out()
         else:
-            key = event.key()
-            s = keymap.get(key)
-            if s:
-                self._session.write(s.encode("utf-8"))
+            if text:
+                self._session.write(text.encode("utf-8"))
+            else:
+                s = keymap.get(key)
+                if s:
+                    self._session.write(s.encode("utf-8"))
         event.accept()
     
 
