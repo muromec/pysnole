@@ -17,6 +17,7 @@ DEBUG = False
 
 class TerminalWidget(QWidget):
 
+    
     foreground_color_map = {
       0: "#000",
       1: "#b00",
@@ -124,8 +125,8 @@ class TerminalWidget(QWidget):
         self._session.stop()
 
         
-    def cwd(self):
-        return self._session.cwd()
+    def pid(self):
+        return self._session.pid()
 
 
     def setFont(self, font):

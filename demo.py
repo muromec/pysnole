@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+
 from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QApplication, QTabWidget, QPushButton
+
 from pyqterm import TerminalWidget
+from pyqterm.procinfo import ProcessInfo
 
 
 
@@ -13,6 +16,7 @@ class TabbedTerminal(QTabWidget):
 	
 	def __init__(self, parent=None):
 		super(TabbedTerminal, self).__init__(parent)
+		self.proc_info = ProcessInfo()
 		self.setTabPosition(QTabWidget.South)
 		self._new_button = QPushButton(self)
 		self._new_button.setText("New")
@@ -26,8 +30,9 @@ class TabbedTerminal(QTabWidget):
 		self.tabCloseRequested[int].connect(self._on_close_request)
 		self.currentChanged[int].connect(self._on_current_changed)
 		QTimer.singleShot(0, self.new_terminal) # create lazy on idle
+		self.startTimer(1000)
 
-		
+
 	def _on_close_request(self, idx):
 		self._terms.remove(self.widget(idx))
 		self.removeTab(idx)
@@ -37,43 +42,53 @@ class TabbedTerminal(QTabWidget):
 		
 			
 	def _on_current_changed(self, idx):
-		widget = self.currentWidget()
-		if widget:
-			self.setWindowTitle("Terminal %s" % (widget.cwd() or ""))
+		term = self.widget(idx)
+		self._update_title(term)
 
 	
 	def new_terminal(self):
 		term = TerminalWidget(self)
 		term.session_closed.connect(self._on_session_closed)
-		term.return_pressed.connect(self._on_return_pressed)
 		self.addTab(term, "Terminal")
 		self._terms.append(term)
 		self.setCurrentWidget(term)
 		term.setFocus()
-		QTimer.singleShot(500, lambda :self._update_title(term))
-		
 
-	def _on_return_pressed(self):
-		term = self.sender()
-		QTimer.singleShot(500, lambda :self._update_title(term))
 		
+	def timerEvent(self, event):
+		self._update_title(self.currentWidget())
+
 
 	def _update_title(self, term):
-		idx = self.indexOf(term)
-		cwd = term.cwd()
-		title = os.path.basename(cwd or "Terminal")
-		self.setTabText(idx, title)
-		self.setWindowTitle("Terminal %s" % (cwd or ""))
-
-	def _on_session_closed(self):
-		if self.count() == 1:
+		if term is None:
+			self.setWindowTitle("Terminal")
 			return
+		idx = self.indexOf(term)
+		pid = term.pid()
+		self.proc_info.update()
+		child_pids = [pid] + self.proc_info.all_children(pid)
+		for pid in reversed(child_pids):
+			cwd = self.proc_info.cwd(pid)
+			if cwd:
+				break
+		try:
+			cmd = self.proc_info.commands[pid]
+			title = "%s: %s" % (os.path.basename(cwd), cmd)
+		except:
+			title = "Terminal"
+		self.setTabText(idx, title)
+		self.setWindowTitle(title)
+
+	
+	def _on_session_closed(self):
 		term = self.sender()
 		self._terms.remove(term)
 		self.removeTab(self.indexOf(term))
 		widget = self.currentWidget()
 		if widget:
 			widget.setFocus()
+		if self.count() == 0:
+			self.new_terminal()
 
 
 

@@ -1527,16 +1527,8 @@ class Session(object):
         return Session._mux.session.get(self._session_id, {}).get("changed", None)
 
     
-    def cwd(self):
-        pid = Session._mux.session.get(self._session_id, {}).get("pid", None)
-        if not pid:
-            return
-        fn = "/proc/%s/cwd" % (int(pid) + 1)
-        try:
-            return os.readlink(fn)
-        except: 
-            # Non-linux or procfs not mounted
-            return
+    def pid(self):
+        return Session._mux.session.get(self._session_id, {}).get("pid", None)
 
 
 
