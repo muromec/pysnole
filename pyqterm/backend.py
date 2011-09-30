@@ -10,6 +10,7 @@ import pty
 import signal
 import struct
 import select
+import subprocess
 
 
 __version__ = "0.1"
@@ -1301,7 +1302,11 @@ class Multiplexer(object):
                 os.putenv('TERM', self.env_term)
                 os.putenv('PATH', os.environ['PATH'])
                 os.putenv('LANG', ls[0] + '.UTF-8')
-                os.system(cmd)
+                #os.system(cmd)
+                p = subprocess.Popen(cmd, shell=False)
+                #print "called with subprocess", p.pid
+                child_pid, sts = os.waitpid(p.pid, 0)
+                #print "child_pid", child_pid, sts
             except (IOError, OSError):
                 pass
             # self.proc_finish(sid)
@@ -1520,6 +1525,18 @@ class Session(object):
 
     def last_change(self):
         return Session._mux.session.get(self._session_id, {}).get("changed", None)
+
+    
+    def cwd(self):
+        pid = Session._mux.session.get(self._session_id, {}).get("pid", None)
+        if not pid:
+            return
+        fn = "/proc/%s/cwd" % (int(pid) + 1)
+        try:
+            return os.readlink(fn)
+        except: 
+            # Non-linux or procfs not mounted
+            return
 
 
 

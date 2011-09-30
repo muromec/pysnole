@@ -80,15 +80,16 @@ class TerminalWidget(QWidget):
     session_closed = pyqtSignal()
 
 
-    def __init__(self, parent=None, command="/bin/bash"):
+    def __init__(self, parent=None, command="/bin/bash", 
+                 font_name="Monospace", font_size=18):
         super(TerminalWidget, self).__init__(parent)
         self.parent().setTabOrder(self, self)
         self.setFocusPolicy(Qt.WheelFocus)
         self.setAutoFillBackground(False)
         self.setAttribute(Qt.WA_OpaquePaintEvent, True)
         self.setCursor(Qt.IBeamCursor)
-        font = QFont("Monospace")
-        font.setPixelSize(14)
+        font = QFont(font_name)
+        font.setPixelSize(font_size)
         self.setFont(font)
         self._last_update = None
         self._screen = []
@@ -121,6 +122,10 @@ class TerminalWidget(QWidget):
         
     def stop(self):
         self._session.stop()
+
+        
+    def cwd(self):
+        return self._session.cwd()
 
 
     def setFont(self, font):
@@ -316,6 +321,8 @@ class TerminalWidget(QWidget):
         self._reset()
         
 
+    return_pressed = pyqtSignal()
+
     def keyPressEvent(self, event):
         text = unicode(event.text())
         key = event.key()
@@ -344,7 +351,9 @@ class TerminalWidget(QWidget):
                             print "Symbol: Qt.%s" % name
                     print "Text: %r" % text
         event.accept()
-    
+        if key in (Qt.Key_Enter, Qt.Key_Return):
+            self.return_pressed.emit()
+
 
     def mousePressEvent(self, event):
         button = event.button()
