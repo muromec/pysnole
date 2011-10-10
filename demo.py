@@ -34,11 +34,8 @@ class TabbedTerminal(QTabWidget):
 
 
 	def _on_close_request(self, idx):
-		self._terms.remove(self.widget(idx))
-		self.removeTab(idx)
-		widget = self.currentWidget()
-		if widget:
-			widget.setFocus()
+		term = self.widget(idx)
+		term.stop()
 		
 			
 	def _on_current_changed(self, idx):
@@ -82,7 +79,10 @@ class TabbedTerminal(QTabWidget):
 	
 	def _on_session_closed(self):
 		term = self.sender()
-		self._terms.remove(term)
+		try:
+			self._terms.remove(term)
+		except:
+			pass
 		self.removeTab(self.indexOf(term))
 		widget = self.currentWidget()
 		if widget:

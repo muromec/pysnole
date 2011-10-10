@@ -1509,6 +1509,9 @@ class Session(object):
     def close(self):
         return Session._mux.proc_bury(self._session_id)
 
+    
+    stop = close
+
 
     def is_alive(self):
         return Session._mux.session.get(self._session_id, {}).get('state') == 'alive'
