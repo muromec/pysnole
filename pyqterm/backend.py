@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+# This code is based on AjaxTerm/Web-Shell which included a fairly complete
+# vt100 implementation as well as a stable process multiplexer.
+# I made some small fixes, improved some small parts and added a Session class
+# which can be used by the widget.
+# License: GPL2
 import sys
 import os
 import fcntl
