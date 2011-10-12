@@ -334,7 +334,7 @@ class TerminalWidget(QWidget):
         elif ctrl and key == Qt.Key_Minus:
                 self.zoom_out()
         else:
-            if text:
+            if text and key != Qt.Key_Backspace:
                 self.send(text.encode("utf-8"))
             else:
                 s = self.keymap.get(key)
