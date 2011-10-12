@@ -15,17 +15,19 @@ Here is a minimal example:
   
   
   if __name__ == "__main__":
-	app = QApplication(sys.argv)
-	win = TerminalWidget()
-    win.r
-	win.show()
-	app.exec_()
+      app = QApplication(sys.argv)
+      win = TerminalWidget()
+      win.resize(800, 600)
+      win.show()
+      app.exec_()
 
 
 
 Look into *demo.py* for a more complete example with a tabbed terminal
 application.
 
+
+.. image:: screenshot2.png
 
 
 The constructor has the following signature:
@@ -51,3 +53,5 @@ The widget emits the following signals:
  * session_closed()
  * return_pressed()
  
+
+
