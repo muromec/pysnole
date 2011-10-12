@@ -41,6 +41,10 @@ Or just got to the BitBucket overview page: https://bitbucket.org/henning/pyqter
 .. image:: screenshot1.png
 
 
+The Python Packaging Index (PyPI) also contains releases:  http://pypi.python.org/pypi/pyqterm
+
+The site also hosts the generated HTML-documentation: http://packages.python.org/pyqterm/
+   
    
 Indices and tables
 ==================
