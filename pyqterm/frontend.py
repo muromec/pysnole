@@ -92,6 +92,7 @@ class TerminalWidget(QWidget):
         font = QFont(font_name)
         font.setPixelSize(font_size)
         self.setFont(font)
+        self._session = None
         self._last_update = None
         self._screen = []
         self._text = []
@@ -415,21 +416,40 @@ class TerminalWidget(QWidget):
              (0, end_row - 1, end_col, end_row)
              ]
 
+             
+    def text(self, rect=None):
+        if rect is None:
+            return "\n".join(self._text)
+        else:
+            text = []
+            (start_col, start_row, end_col, end_row) = rect
+            for row in range(start_row, end_row):
+                text.append(self._text[row][start_col:end_col])
+            return text
+
         
-    def _selection_text(self):
+    def text_selection(self):
         text = []
         for (start_col, start_row, end_col, end_row) in self._selection:
             for row in range(start_row, end_row):
                 text.append(self._text[row][start_col:end_col])
         return "\n".join(text)
 
+    
+    def column_count(self):
+        return self._columns
+    
+    
+    def row_count(self):
+        return self._rows
+    
 
     def mouseMoveEvent(self, event):
         if self._press_pos:
             move_pos = event.pos()
             self._selection = self._selection_rects(self._press_pos, move_pos)
     
-            sel = self._selection_text()
+            sel = self.text_selection()
             if DEBUG:
                 print "%r copied to xselection" % sel
             self._clipboard.setText(sel, QClipboard.Selection)
@@ -465,9 +485,13 @@ class TerminalWidget(QWidget):
             end_col += 1
         self._selection = [ (start_col + found_left, row, end_col - found_right + 1, row + 1) ]
         
-        sel = self._selection_text()
+        sel = self.text_selection()
         if DEBUG:
             print "%r copied to xselection" % sel
         self._clipboard.setText(sel, QClipboard.Selection)
 
         self.update_screen()
+
+        
+    def is_alive(self):
+        return (self._session and self._session.is_alive()) or False

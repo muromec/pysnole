@@ -43,6 +43,13 @@ The widget has the following methods:
  * pid() -> process id (int)
  * zoom_in()
  * zoom_out()
+ * text_selection() -> string
+ * update_screen() 
+ * is_alive() -> bool
+ * row_count() -> int
+ * column_count() -> int
+ * text() -> string
+ 
 
 TerminalWidget inherits directly from QWidget, so it has show, hide,
 setFont, etc.
