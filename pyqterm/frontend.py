@@ -4,7 +4,7 @@ import time
 
 from PyQt4.QtCore import QRect, Qt, pyqtSignal
 from PyQt4.QtGui import (
-       QApplication, QWidget, QPainter, QFont, QBrush, QColor, 
+       QApplication, QClipboard, QWidget, QPainter, QFont, QBrush, QColor, 
        QPen, QPixmap, QImage, QContextMenuEvent)
 
 from .backend import Session
@@ -94,6 +94,7 @@ class TerminalWidget(QWidget):
         self.setFont(font)
         self._last_update = None
         self._screen = []
+        self._text = []
         self._cursor_rect = None
         self._cursor_col = 0
         self._cursor_row = 0
@@ -101,6 +102,7 @@ class TerminalWidget(QWidget):
         self._blink = False
         self._press_pos = None
         self._selection = None
+        self._clipboard = QApplication.clipboard()
         QApplication.instance().lastWindowClosed.connect(Session.close_all)
         if command:
             self.execute()
@@ -146,8 +148,7 @@ class TerminalWidget(QWidget):
         if self._timer_id is not None:
             self.killTimer(self._timer_id)
         self._timer_id = self.startTimer(250)
-        self._dirty = True
-        self.update()
+        self.update_screen()
 
 
     def focusOutEvent(self, event):
@@ -164,8 +165,8 @@ class TerminalWidget(QWidget):
     def resizeEvent(self, event):
         if not self._session.is_alive():
             return
-        w, h = self._pixel2pos(self.width(), self.height())
-        self._session.resize(w, h)
+        self._columns, self._rows = self._pixel2pos(self.width(), self.height())
+        self._session.resize(self._columns, self._rows)
 
 
     def closeEvent(self, event):
@@ -213,10 +214,14 @@ class TerminalWidget(QWidget):
         self._update_metrics()
         self._update_cursor_rect()
         self.resizeEvent(None)
+        self.update_screen()
+
+
+    def update_screen(self):
         self._dirty = True
         self.update()
-        
 
+        
     def paintEvent(self, event):
         painter = QPainter(self)
         if self._dirty:
@@ -227,7 +232,7 @@ class TerminalWidget(QWidget):
                 self._paint_cursor(painter)
         if self._selection:
             self._paint_selection(painter)
-
+            self._dirty = True
 
 
     def _pixel2pos(self, x, y):
@@ -270,8 +275,11 @@ class TerminalWidget(QWidget):
         pen = QPen(QColor(foreground_color))
         painter_setPen(pen)
         y = 0
+        text = []
+        text_append = text.append
         for row, line in enumerate(self._screen):
             col = 0
+            text_line = ""
             for item in line:
                 if isinstance(item, basestring):
                     x = col * char_width
@@ -280,6 +288,7 @@ class TerminalWidget(QWidget):
                     painter_fillRect(rect, brush)
                     painter_drawText(rect, align, item)
                     col += length
+                    text_line += item
                 else:
                     foreground_color_idx, background_color_idx, underline_flag = item
                     foreground_color = foreground_color_map[foreground_color_idx]
@@ -289,25 +298,25 @@ class TerminalWidget(QWidget):
                     painter_setPen(pen)
                     #painter.setBrush(brush)
             y += char_height
+            text_append(text_line)
+        self._text = text
 
-
+            
     def _paint_selection(self, painter):
-        start_pos, end_pos = self._selection
-        start_col, start_row = self._pixel2pos(start_pos.x(), start_pos.y())
-        end_col, end_row = self._pixel2pos(end_pos.x(), end_pos.y())
-        x, y = self._pos2pixel(start_col, start_row)
-        width, height = self._pos2pixel(end_col - start_col, end_row - start_row)
-        rect = QRect(x, y, width, height)
-
         pcol = QColor(200, 200, 200, 50)
         pen = QPen(pcol)
         bcol = QColor(230, 230, 230, 50)
         brush = QBrush(bcol)
         painter.setPen(pen)
-        painter.setBrush(brush)
-        painter.drawRect(rect)
+        painter.setBrush(brush)        
+        for (start_col, start_row, end_col, end_row) in self._selection:
+            x, y = self._pos2pixel(start_col, start_row)
+            width, height = self._pos2pixel(end_col - start_col, end_row - start_row)
+            rect = QRect(x, y, width, height)
+            #painter.drawRect(rect)
+            painter.fillRect(rect, brush)
 
-        
+
     def zoom_in(self):
         font = self.font()
         font.setPixelSize(font.pixelSize() + 2)
@@ -361,22 +370,104 @@ class TerminalWidget(QWidget):
         if button == Qt.RightButton:
             ctx_event = QContextMenuEvent(QContextMenuEvent.Mouse, event.pos())
             self.contextMenuEvent(ctx_event)
+            self._press_pos = None
         elif button == Qt.LeftButton:
             self._press_pos = event.pos()
-            self.update()
+            self._selection = None
+            self.update_screen()
+        elif button == Qt.MiddleButton:
+            self._press_pos = None
+            self._selection = None
+            text = unicode(self._clipboard.text(QClipboard.Selection))
+            self.send(text.encode("utf-8"))
+            #self.update_screen()
 
 
     def mouseReleaseEvent(self, QMouseEvent):
-        self._press_pos = None
-        self._selection = None
-        self._dirty = True
-        self.update()
+        pass #self.update_screen()
 
+
+    def _selection_rects(self, start_pos, end_pos):
+        sx, sy = start_pos.x(), start_pos.y()
+        start_col, start_row = self._pixel2pos(sx, sy)
+        ex, ey = end_pos.x(), end_pos.y()
+        end_col, end_row = self._pixel2pos(ex, ey)
+        if start_row == end_row:
+            if ey > sy or end_row == 0:
+                end_row += 1
+            else:
+                end_row -= 1
+        if start_col == end_col:
+            if ex > sx or end_col == 0:
+                end_col += 1
+            else:
+                end_col -= 1
+        if start_row > end_row:
+            start_row, end_row = end_row, start_row
+        if start_col > end_col:
+            start_col, end_col = end_col, start_col
+        if end_row - start_row == 1:
+            return [ (start_col, start_row, end_col, end_row) ]
+        else:
+            return [
+             (start_col, start_row, self._columns, start_row + 1),
+             (0, start_row + 1, self._columns, end_row - 1),
+             (0, end_row - 1, end_col, end_row)
+             ]
+
+        
+    def _selection_text(self):
+        text = []
+        for (start_col, start_row, end_col, end_row) in self._selection:
+            for row in range(start_row, end_row):
+                text.append(self._text[row][start_col:end_col])
+        return "\n".join(text)
 
 
     def mouseMoveEvent(self, event):
-        move_pos = event.pos()
-        self._selection = (self._press_pos, move_pos)
-        self._dirty = True
-        self.update()
+        if self._press_pos:
+            move_pos = event.pos()
+            self._selection = self._selection_rects(self._press_pos, move_pos)
+    
+            sel = self._selection_text()
+            if DEBUG:
+                print "%r copied to xselection" % sel
+            self._clipboard.setText(sel, QClipboard.Selection)
+            
+            self.update_screen()
 
+
+        
+    def mouseDoubleClickEvent(self, event):
+        self._press_pos = None
+        # double clicks create a selection for the word under the cursor
+        pos = event.pos()
+        x, y = pos.x(), pos.y()
+        col, row = self._pixel2pos(x, y)
+        line = self._text[row]
+        # find start of word
+        start_col = col 
+        found_left = 0
+        while start_col > 0:
+            char = line[start_col]
+            if not char.isalnum() and char not in ("_",):
+                found_left = 1
+                break
+            start_col -= 1
+        # find end of word
+        end_col = col
+        found_right = 0
+        while end_col < self._columns:
+            char = line[end_col]
+            if not char.isalnum() and char not in ("_",):
+                found_right = 1
+                break
+            end_col += 1
+        self._selection = [ (start_col + found_left, row, end_col - found_right + 1, row + 1) ]
+        
+        sel = self._selection_text()
+        if DEBUG:
+            print "%r copied to xselection" % sel
+        self._clipboard.setText(sel, QClipboard.Selection)
+
+        self.update_screen()
