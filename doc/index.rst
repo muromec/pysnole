@@ -9,7 +9,7 @@ Welcome to PyQTermWidget's documentation!
 Unlike the older pyqonsole this console widget works with PyQt4 and let's you
 embed a shell into your application. 
 
-For the vt100 terminal emulation I adapted code from AjaxTerm.
+The vt100 terminal emulation code is based on AjaxTerm and WebShell.
 All code is distributed under the General Public License 2.
 
 
@@ -43,7 +43,8 @@ Or just got to the BitBucket overview page: https://bitbucket.org/henning/pyqter
 
 The Python Packaging Index (PyPI) also contains releases:  http://pypi.python.org/pypi/pyqterm
 
-The site also hosts the generated HTML-documentation: http://packages.python.org/pyqterm/
+The generated HTML-documentation is hosted at http://pyqtermwidget.rtfd.org/
+(PDF: http://media.readthedocs.org/pdf/pyqtermwidget/latest/pyqtermwidget.pdf).
    
    
 Indices and tables

@@ -8,7 +8,7 @@ See *docs/usage.rst* if you want to know how to use this widget. To test
 the widget you can execute *demo.py*.
 
 Or browse the generated HTML documentation at
-http://packages.python.org/pyqterm/
+http://pyqtermwidget.rtfd.org/
 
-For the vt100 terminal emulation I adapted code from AjaxTerm.
+The vt100 terminal emulation code is based on AjaxTerm and WebShell.
 All code is distributed under the General Public License 2.
