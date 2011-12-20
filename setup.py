@@ -4,14 +4,15 @@ from setuptools import setup, find_packages
 
 if __name__ == "__main__":
     setup(
-        name = "pyqterm",
-        version = "0.2",
-        description="Simple terminal/console widget for PyQt4 with vt100 support",
-        author="Henning Schroeder",
+        name = "pysnole",
+        version = "0.1",
+        description="Terminal emulator widget backed by pyte",
+        author="Ilya Petrov",
         author_email="henning.schroeder@gmail.com",
-        url="https://bitbucket.org/henning/pyqtermwidget",
+        url="https://github.com/muromec/pysnole",
         zip_safe=True,
         license="GPL2",
         keywords="pyqt pyqt4 console terminal shell vt100 widget",
+        depends = ["pysnole"],
         packages = find_packages(),
     )

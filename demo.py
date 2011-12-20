@@ -94,7 +94,7 @@ class TabbedTerminal(QTabWidget):
 
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
-	win = TabbedTerminal()
+	win = TerminalWidget()
 	win.show()
 	app.exec_()
 
