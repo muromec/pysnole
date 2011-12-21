@@ -182,9 +182,13 @@ class Session(object):
                 i, o, e = select.select(fds, [], [], 1.0)
             except (IOError, OSError):
                 i = []
+            except select.error:
+                break
 
             if i:
                 self.proc_read()
                 time.sleep(0.002)
 
         self.proc_bury()
+
+        self.stream.feed('\n[ exited ]')

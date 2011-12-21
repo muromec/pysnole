@@ -157,21 +157,33 @@ class TerminalWidget(QWidget):
         self._columns, self._rows = self._pixel2pos(self.width(), self.height())
         self._session.resize(self._columns, self._rows)
 
+        self._margins = [
+            QRect(
+                0,
+                self._rows * self._char_height,
+                self.width(),
+                self._char_height,
+            ),
+            QRect(
+                self._columns * self._char_width,
+                0,
+                self._char_width,
+                self.height(),
+            ),
+        ]
+
+        # XXX: should pyte handle this for me?
+        self._screen.dirty.update(range(self._rows))
+
+
 
     def closeEvent(self, event):
-        self._session.close()
+        self._session.proc_bury()
 
     def _update_metrics(self):
         fm = self.fontMetrics()
         self._char_height = fm.height()
         self._char_width = fm.width("W")
-
-
-    def _reset(self):
-        self._update_metrics()
-        self.resizeEvent(None)
-        self.update_screen()
-
 
     def update_screen(self):
         self.update()
@@ -179,7 +191,14 @@ class TerminalWidget(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         if self._screen.dirty:
-            self._paint_screen(painter)
+            self._paint_screen(painter, self._screen.dirty)
+
+        if self._margins:
+            bot, right = self._margins
+            painter.fillRect(right, self.brash('default'))
+            painter.fillRect(bot, self.brash('default'))
+            self._margins = []
+
 
     def _pixel2pos(self, x, y):
         col = int(round(x / self._char_width))
@@ -192,7 +211,7 @@ class TerminalWidget(QWidget):
         y = row * self._char_height
         return x, y
 
-    def _paint_screen(self, painter):
+    def _paint_screen(self, painter, lines):
         # Speed hacks: local name lookups are faster
         vars().update(QColor=QColor, QBrush=QBrush, QPen=QPen, QRect=QRect)
         char_width = self._char_width
@@ -202,10 +221,10 @@ class TerminalWidget(QWidget):
         painter_setPen = painter.setPen
         align = Qt.AlignTop | Qt.AlignLeft
         # set defaults
-        while self._screen.dirty:
-            line = self._screen.dirty.pop()
+        while lines:
+            line = lines.pop()
 
-            if line > len(self._screen):
+            if line >= len(self._screen):
                 continue
 
             y = char_height * line
