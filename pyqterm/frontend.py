@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-import sys
+import sys, os
 import time
 
-from PyQt4.QtCore import QRect, Qt, pyqtSignal
+from PyQt4.QtCore import QRect, Qt, pyqtSignal, QByteArray
 from PyQt4.QtGui import (
        QApplication, QClipboard, QWidget, QPainter, QFont, QBrush, QColor, 
        QPen, QPixmap, QImage, QContextMenuEvent)
@@ -229,13 +229,25 @@ class TerminalWidget(QWidget):
 
             y = char_height * line
             for col,item in enumerate(self._screen[line]):
-                
+                x = col * char_width
+
+                if item.fg and item.fg.startswith('img:'):
+                    self.draw_Image(painter, x, y+char_height, item.fg)
+                    continue
+
                 painter_setPen(self.pen(item.fg))
 
-                x = col * char_width
                 rect = QRect(x, y, char_width, char_height)
                 painter_fillRect(rect, self.brash(item.bg))
                 painter_drawText(rect, align, item.data)
+
+
+    def draw_Image(self, painter, x, y, img):
+        import base64
+        _head, img = img.split('\n',1)
+        data = base64.b64decode(img)
+        qimg = QImage.fromData(data)
+        painter.drawImage(x, y, qimg)
 
 
     return_pressed = pyqtSignal()

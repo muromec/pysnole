@@ -34,9 +34,42 @@ def synchronized(func):
     return wrapper
 
 
+import cStringIO
 
+class TagStream(pyte.ByteStream):
+    def __init__(self,):
+        super(TagStream, self).__init__()
+        self.handlers['annotation'] = self._ann
+
+    def _ann(self, char):
+
+        if char == u'\ufffa':
+            self.annotation.seek(0)
+            self.dispatch("annotate", self.annotation.read())
+            self.state = 'stream'
+            return
+
+        self.annotation.write(char)
+
+    def _stream(self, char):
+
+        if char == u'\ufff9':
+            self.state = 'annotation'
+            self.annotation = cStringIO.StringIO()
+            return
+        if char == u'\ufffb':
+            self.dispatch("annotate", None)
+
+        super(TagStream, self)._stream(char)
+
+class TagScreen(pyte.Screen):
+    def annotate(self, text):
+        self.cursor.attrs = self.cursor.attrs._replace(fg=text or 'default')
 
 class Session(object):
+
+    class Screen(TagScreen, pyte.DiffScreen):
+        pass
 
 
     def __init__(self, cmd="/bin/bash", env_term = "linux", timeout=60*60*24, size=(80,24)):
@@ -48,8 +81,8 @@ class Session(object):
         self.size = size
 
         # pyte
-        self.stream = pyte.ByteStream()
-        self.screen = pyte.DiffScreen(*self.size)
+        self.stream = TagStream()
+        self.screen = self.Screen(*self.size)
         self.stream.attach(self.screen)
 
         # Supervisor thread
