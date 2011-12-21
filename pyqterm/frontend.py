@@ -106,7 +106,6 @@ class TerminalWidget(QWidget):
         self._selection = None
         self._clipboard = QApplication.clipboard()
         self.setupPainters()
-        QApplication.instance().lastWindowClosed.connect(Session.close_all)
         if command:
             self.execute()
 
@@ -137,8 +136,8 @@ class TerminalWidget(QWidget):
         return brash
         
     def execute(self, command="/bin/bash"):
-        self._session = Session()
-        self._session.start(command)
+        self._session = Session(cmd=command)
+        self._session.start()
         self._screen = self._session.screen
         self._timer_id = None
         # start timer either with high or low priority
@@ -213,17 +212,16 @@ class TerminalWidget(QWidget):
                 print "Session closed"
             self.session_closed.emit()
             return
-        last_change = self._session.last_change()
-        if not last_change:
-            return
-        if not self._last_update or last_change > self._last_update:
-            self._last_update = last_change
+
+        self._dirty = bool(self._screen.dirty)
+        if self._dirty:
             self._cursor_col = self._screen.cursor.x
             self._cursor_row = self._screen.cursor.y
             self._update_cursor_rect()
-            self._dirty = bool(self._screen.dirty)
+
         if self.hasFocus():
             self._blink = not self._blink
+
         self.update()
 
 
