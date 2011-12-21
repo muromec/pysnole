@@ -7,8 +7,11 @@ from pyqterm import TerminalWidget
 
 
 if __name__ == "__main__":
-	app = QApplication(sys.argv)
-	win = TerminalWidget()
-	win.show()
-	app.exec_()
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    app = QApplication(sys.argv)
+    win = TerminalWidget()
+    win.show()
+    app.exec_()
 
