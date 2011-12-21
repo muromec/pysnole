@@ -15,6 +15,7 @@ import struct
 import select
 import subprocess
 
+import pyte
 
 __version__ = "0.1"
 
@@ -46,6 +47,11 @@ class Session(object):
         self.timeout = timeout
         self.size = size
 
+        # pyte
+        self.stream = pyte.ByteStream()
+        self.screen = pyte.DiffScreen(*self.size)
+        self.stream.attach(self.screen)
+
         # Supervisor thread
         self.signal_stop = 0
         self.thread = threading.Thread(target = self.proc_thread)
@@ -55,8 +61,6 @@ class Session(object):
         # Stop supervisor thread
         self.signal_stop = 1
         self.thread.join()
-
-
 
     def resize(self, w, h):
         self.screen.resize(h,w)
@@ -69,18 +73,10 @@ class Session(object):
         except (IOError, OSError):
             pass
 
-
     @synchronized
     def start(self):
-        import pyte
         # Start a new session
-
-        self.stream = pyte.ByteStream()
-        self.screen = pyte.DiffScreen(*self.size)
-        self.stream.attach(self.screen)
-
         return self.proc_spawn()
-
 
     def proc_spawn(self,):
         # Session
@@ -192,7 +188,3 @@ class Session(object):
                 time.sleep(0.002)
 
         self.proc_bury()
-
-    def is_alive(self):
-        # TODO: reimplement states
-        return True
